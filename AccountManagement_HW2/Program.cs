@@ -41,10 +41,8 @@ namespace AccountManagement
             Console.WriteLine("3. Deposit");
             Console.WriteLine("4. Withdrawal");
             Console.WriteLine("5. Delete an account");
-            Console.WriteLine("6. BATCH MODE (deprecated)");
-            Console.WriteLine("7. Search customer by name");
-            Console.WriteLine("8. List All Customers (ordered by join date)");
-            Console.WriteLine("9. Bank's Total Funds");
+            Console.WriteLine("6. List Customers");
+            Console.WriteLine("7. Bank's Total Funds");
             Console.WriteLine("Q Exit");
         }
 
@@ -67,10 +65,10 @@ namespace AccountManagement
                 case '5':
                     RemoveAccount();
                     break;
-                case '8':
+                case '6':
                     ListCustomers();
                     break;
-                case '9':
+                case '7':
                     Console.WriteLine("$ {0}", TotalFunds());
                     break;
                 case 'q':
@@ -93,14 +91,14 @@ namespace AccountManagement
                 if (acctype == 'c' || acctype == 'C')
                 {
                     Customer newCustomer;
-                    GetInfo(out newCustomer);
+                    AddCustomerInfo(out newCustomer);
                     if (newCustomer != null)
                         AddNewCustomer(ref newCustomer);
                 }
                 else if (acctype == 's' || acctype == 'S')
                 {
                     Customer newCustomer;
-                    GetInfo(out newCustomer);
+                    AddCustomerInfo(out newCustomer);
                     if (newCustomer != null)
                         AddNewCustomer(ref newCustomer);
                 }
@@ -113,8 +111,6 @@ namespace AccountManagement
                     Console.Write("Invalid input. \n");
                 }
             } while (true);
-
-
         }
 
 
@@ -125,10 +121,13 @@ namespace AccountManagement
             try
             {
                 customer = FindCustomer(Convert.ToUInt32(Console.ReadLine()));
-
-            } catch (Exception)
+            } 
+            catch (Exception)
             {
+                var originalForeground = Console.ForegroundColor;
+                Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("Error finding customer.");
+                Console.ForegroundColor = originalForeground;
                 return;
             }
 
@@ -138,13 +137,14 @@ namespace AccountManagement
                 Console.Write("Enter amount $");
                 try
                 {
-                    double deposit = Convert.ToDouble(Console.ReadLine());
-                    customer.checkingAccount.Amount += deposit;
+                    customer.Deposit( Convert.ToDouble(Console.ReadLine()) );
                 }
-                catch (Exception)
+                catch (FormatException)
                 {
+                    var originalForeground = Console.ForegroundColor;
+                    Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine("Invalid input.");
-                    return;
+                    Console.ForegroundColor = originalForeground;
                 }
             }
         }
@@ -159,7 +159,10 @@ namespace AccountManagement
             } 
             catch (Exception)
             {
+                var originalForeground = Console.ForegroundColor;
+                Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("Error finding customer.");
+                Console.ForegroundColor = originalForeground;
                 return;
             }
 
@@ -169,12 +172,14 @@ namespace AccountManagement
                 Console.Write("Enter amount $");
                 try
                 {
-                    double withdrawal = Convert.ToDouble(Console.ReadLine());
-                    customer.checkingAccount.Amount -= withdrawal;
-                } catch (Exception)
+                    customer.Withdrawal(Convert.ToDouble(Console.ReadLine()));
+                }
+                catch (FormatException)
                 {
-                    Console.WriteLine("Invalid input.");
-                    return;
+                    var originalForeground = Console.ForegroundColor;
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("Error: Format Exception");
+                    Console.ForegroundColor = originalForeground;
                 }
             }
         }
@@ -199,64 +204,48 @@ namespace AccountManagement
 
         private Customer FindCustomerByName(string[] cname)
         {
-            //var lookup = HsCustomers.ToLookup(c => c.firstName);
-            var look = HsCustomers.GetEnumerator();
-
-            while (look.Current.firstName != cname[0] && look.Current.lastName != cname[1])
+            using (var look = HsCustomers.GetEnumerator())
             {
-                try
+                while (look.MoveNext()) 
                 {
-                    look.MoveNext();
-                }
-                catch (Exception)
-                {
-                    Console.WriteLine("Customer not found.");
-                    return null;
+                    if (look.Current.firstName != cname[0] && look.Current.lastName != cname[1])
+                        return look.Current;
                 }
             }
-            return look.Current;
-        }
-
-        private static Customer FindCustomer(uint AccountNumber)
-        {
-            var lookup = HsCustomers.GetEnumerator();
-            if (lookup.MoveNext() == false) return null;
-
-            do
-            {
-                Console.WriteLine("In FindCustomer dowhile: {0}", lookup.Current.firstName);
-                if (lookup.Current.checkingAccount.AccountNumber.Equals(AccountNumber) ||
-                    lookup.Current.savingsAccount.AccountNumber.Equals(AccountNumber))
-                    return lookup.Current;
-            } while (lookup.MoveNext());
-            /*
-            var lookup = HsCustomers.ToLookup(c => c.checkingAccount.AccountNumber);
-            foreach (var actnum in lookup)
-            {
-                if (actnum.Key == AccountNumber) return actnum.GetEnumerator().Current;
-                // return lookup[3].GetEnumerator().Current; //
-            }
-            */
+            var originalForeground = Console.ForegroundColor;
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("Customer not found. \n{0}");
+            Console.ForegroundColor = originalForeground;
             return null;
         }
 
-        public static bool CustomerExists(string cname)
+        private static Customer FindCustomer(uint accountNumber)
         {
-            //Program.HsCustomers.Contains();
-            return false;
+            using (var lookup = HsCustomers.GetEnumerator())
+            {
+                if (lookup.MoveNext() == false) return null;
+                do
+                {
+                    if (lookup.Current.CheckingAccountNumber.Equals(accountNumber) ||
+                        lookup.Current.SavingsAccountNumber.Equals(accountNumber))
+                        return lookup.Current;
+                } while (lookup.MoveNext());
+            }
+            Console.WriteLine("Customer not found.\n");
+            return null;
         }
 
         private static bool AddNewCustomer(ref Customer newCustomer)
         {
             if (HsCustomers.Add(newCustomer))
             {
-                Console.WriteLine(@"'{0}' added successfully", newCustomer.ToString());
+                Console.WriteLine(@"'{0}' added successfully", newCustomer);
             }
             else
             {
                 Console.WriteLine("Customer could not be added");
+                return false;
             }
-
             return true;
         }
 
@@ -268,7 +257,7 @@ namespace AccountManagement
             }
         }
 
-        private static void GetInfo(out Customer potentialCustomer)
+        private static void AddCustomerInfo(out Customer potentialCustomer)
         {
             string[] name;
             string[] address;
@@ -281,7 +270,10 @@ namespace AccountManagement
             }
             catch (Exception e)
             {
-                Console.WriteLine("Error in GetInfo(). \n {0}", e.Message);
+                var originalForeground = Console.ForegroundColor;
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Error in AddCustomerInfo(). \n {0}", e.Message);
+                Console.ForegroundColor = originalForeground;
                 return;
             }
             finally
@@ -291,19 +283,18 @@ namespace AccountManagement
 
             if (name.Length < 2)
             {
+                var originalForeground = Console.ForegroundColor;
+                Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("Must input first and last name");
+                Console.ForegroundColor = ConsoleColor.Red;
                 return;
             }
 
-            potentialCustomer = new Customer( new string[][]{ name, address }, checking: true);
-
-            // Check if the customer already exists
-            CustomerComparer predicate = new CustomerComparer();
-            if (HsCustomers.Contains(potentialCustomer, predicate))
+            if (address.Length < 3)
             {
-                Console.WriteLine("That customer already exists.");
-                potentialCustomer = null;
+                Console.WriteLine("Address must contain the city state and zip code.", ConsoleColor.Red);
             }
+            potentialCustomer = new Customer( new string[][]{ name, address }, checking: true);
         }
 
 
@@ -345,12 +336,12 @@ namespace AccountManagement
         {
             public SavingsAccount(double INTERESTRATE = 1.5)
             {
-                interestRate = INTERESTRATE;
+                InterestRate = INTERESTRATE;
                 AccountNumber = ++_totalAccounts;
                 _balance = 0;
             }
 
-            public double interestRate { get; set; }
+            public double InterestRate { get; set; }
             public uint AccountNumber { get; set; }
             private static uint _totalAccounts;
             private double _balance;
@@ -385,7 +376,12 @@ namespace AccountManagement
                 set
                 {
                     if (value < 0)
+                    {
+                        var originalForeground = Console.ForegroundColor;
+                        Console.ForegroundColor = ConsoleColor.Red;
                         Console.WriteLine("Attempting to set Checking Balance below 0. Transaction aborted.");
+                        Console.ForegroundColor = originalForeground;
+                    }
                     else
                         _balance = value;
                 }
@@ -398,26 +394,26 @@ namespace AccountManagement
         public string City { get; set; }
         public string State { get; set; }
         public uint Zipcode { get; set; }
-        private CheckingAccount checkingAccount;
-        private SavingsAccount savingsAccount;
+        private readonly CheckingAccount _checkingAccount;
+        private readonly SavingsAccount _savingsAccount;
         
-        public double CheckingBalance => checkingAccount.Balance; // An "expression body" prevents using "return"
-        public double SavingsBalance => savingsAccount.Balance;
+        public double CheckingBalance => _checkingAccount.Balance; // An "expression body" prevents using "return"
+        public double SavingsBalance => _savingsAccount.Balance;
 
-        public uint CheckingAccountNumber => checkingAccount.AccountNumber;
-        public uint SavingsBalanceNumber => savingsAccount.AccountNumber;
+        public uint CheckingAccountNumber => _checkingAccount.AccountNumber;
+        public uint SavingsAccountNumber => _savingsAccount.AccountNumber;
         #endregion
 
         public Customer(bool checking = false, bool savings = false)
         {
-            if (checking == true)
+            if (checking)
             { 
-                checkingAccount = new CheckingAccount();
+                _checkingAccount = new CheckingAccount();
             }
 
-            if (savings == true)
+            if (savings)
             {
-                savingsAccount = new SavingsAccount();
+                _savingsAccount = new SavingsAccount();
             }
         }
 
@@ -428,17 +424,29 @@ namespace AccountManagement
             City = details[1][0].ToString();
             State = details[1][1].ToString(); 
             Zipcode = Convert.ToUInt32(details[1][2].ToString()); 
-            if (checking == true)
-                checkingAccount = new CheckingAccount();
+            if (checking)
+                _checkingAccount = new CheckingAccount();
             if (savings)
-                savingsAccount = new SavingsAccount();
+                _savingsAccount = new SavingsAccount();
         }
 
-        
+        public void Withdrawal(double amount, bool checking = false, bool savings = false)
+        { 
+            if(checking)   this._checkingAccount.Balance -= amount;
+            else if (savings)  this._savingsAccount.Balance -= amount;
+        }
+
+        public void Deposit(double amount, bool checking = false, bool savings = false)
+        {
+            if (checking)   this._checkingAccount.Balance += amount;
+            else if (savings)   this._savingsAccount.Balance += amount;
+        }
+
         public override string ToString()
         {
             StringBuilder str = new StringBuilder();
-            str.AppendFormat("{0} {1}\n {2}, {3}  {4}\n {5}\n{6}\n", firstName, lastName, City, State, Zipcode, checkingAccount, savingsAccount);
+            str.AppendFormat("{0} {1}\n {2}, {3}  {4}\nChecking Account #: {5}\nChecking Balance: \n${6} \nSavings Account #: {7} \nSavings Balance: ${8}", 
+                firstName, lastName, City, State, Zipcode, CheckingAccountNumber, CheckingBalance, SavingsAccountNumber, SavingsBalance);
             return str.ToString();
         }
     } // Class Customer
