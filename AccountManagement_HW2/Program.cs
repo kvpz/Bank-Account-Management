@@ -121,7 +121,7 @@ namespace AccountManagement
             try
             {
                 customer = FindCustomer(Convert.ToUInt32(Console.ReadLine()));
-            } 
+            }
             catch (Exception)
             {
                 var originalForeground = Console.ForegroundColor;
@@ -137,7 +137,7 @@ namespace AccountManagement
                 Console.Write("Enter amount $");
                 try
                 {
-                    customer.Deposit( Convert.ToDouble(Console.ReadLine()) );
+                    customer.Deposit(Convert.ToDouble(Console.ReadLine()));
                 }
                 catch (FormatException)
                 {
@@ -156,7 +156,7 @@ namespace AccountManagement
             try
             {
                 customer = FindCustomer(Convert.ToUInt32(Console.ReadLine()));
-            } 
+            }
             catch (Exception)
             {
                 var originalForeground = Console.ForegroundColor;
@@ -166,7 +166,7 @@ namespace AccountManagement
                 return;
             }
 
-            if(customer == null) Console.WriteLine("The customer does not exist");
+            if (customer == null) Console.WriteLine("The customer does not exist");
             else
             {
                 Console.Write("Enter amount $");
@@ -200,6 +200,24 @@ namespace AccountManagement
         public static void RemoveAccount()
         {
             Console.Write("Type the customer's account number: ");
+            uint acctnum = 0;
+            try
+            {
+                acctnum = Convert.ToUInt32(Console.ReadLine());
+            }
+            catch (Exception)
+            {
+                var originalForeground = Console.ForegroundColor;
+                Console.ForegroundColor = ConsoleColor.Red; 
+                Console.WriteLine("Invalid input.\n");
+                Console.ForegroundColor = originalForeground;
+            }
+            
+            if (HsCustomers.Remove(FindCustomer(acctnum)))
+                Console.WriteLine("Customer was successfully removed");
+            else
+                Console.WriteLine("Customer was not found");
+
         }
 
         public static Customer FindCustomerByName(string[] cname)
@@ -444,7 +462,7 @@ namespace AccountManagement
         public override string ToString()
         {
             StringBuilder str = new StringBuilder();
-            str.AppendFormat("{0} {1}\n {2}, {3}  {4}\nChecking Account #: {5}\nChecking Balance: \n${6} \nSavings Account #: {7} \nSavings Balance: ${8}", 
+            str.AppendFormat("{0} {1}\n {2}, {3}  {4}\nChecking Account #: {5}\nChecking Balance: ${6}\nSavings Account #: {7}\nSavings Balance: ${8}", 
                 FirstName, LastName, City, State, Zipcode, CheckingAccountNumber, CheckingBalance, SavingsAccountNumber, SavingsBalance);
             return str.ToString();
         }
