@@ -91,14 +91,14 @@ namespace AccountManagement
                 if (acctype == 'c' || acctype == 'C')
                 {
                     Customer newCustomer;
-                    AddCustomerInfo(out newCustomer);
+                    AddCustomerInfo(out newCustomer, checking: true);
                     if (newCustomer != null)
                         AddNewCustomer(ref newCustomer);
                 }
                 else if (acctype == 's' || acctype == 'S')
                 {
                     Customer newCustomer;
-                    AddCustomerInfo(out newCustomer);
+                    AddCustomerInfo(out newCustomer, savings: true);
                     if (newCustomer != null)
                         AddNewCustomer(ref newCustomer);
                 }
@@ -202,13 +202,13 @@ namespace AccountManagement
             Console.Write("Type the customer's account number: ");
         }
 
-        private Customer FindCustomerByName(string[] cname)
+        public static Customer FindCustomerByName(string[] cname)
         {
             using (var look = HsCustomers.GetEnumerator())
             {
                 while (look.MoveNext()) 
                 {
-                    if (look.Current.firstName != cname[0] && look.Current.lastName != cname[1])
+                    if (look.Current.FirstName != cname[0] && look.Current.LastName != cname[1])
                         return look.Current;
                 }
             }
@@ -257,7 +257,7 @@ namespace AccountManagement
             }
         }
 
-        private static void AddCustomerInfo(out Customer potentialCustomer)
+        private static void AddCustomerInfo(out Customer potentialCustomer, bool checking = false, bool savings = false)
         {
             string[] name;
             string[] address;
@@ -286,7 +286,7 @@ namespace AccountManagement
                 var originalForeground = Console.ForegroundColor;
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("Must input first and last name");
-                Console.ForegroundColor = ConsoleColor.Red;
+                Console.ForegroundColor = originalForeground;
                 return;
             }
 
@@ -294,28 +294,24 @@ namespace AccountManagement
             {
                 Console.WriteLine("Address must contain the city state and zip code.", ConsoleColor.Red);
             }
-            potentialCustomer = new Customer( new string[][]{ name, address }, checking: true);
+            potentialCustomer = new Customer( new string[][]{ name, address }, checking: checking, savings: savings);
         }
 
 
         public static double TotalFunds()
         {
             if (HsCustomers.Count < 1) return 0.0;
-            else
+            double total = 0;
+            foreach (var cust in HsCustomers)
             {
-                double total = 0;
-                foreach (var cust in HsCustomers)
-                {
-                    total += cust.CheckingBalance + cust.SavingsBalance;
-                }
-                return total;
+              total += cust.CheckingBalance + cust.SavingsBalance;
             }
+            return total;
         }
 
-        static void Main(string[] args)
+        public static void Main(string[] args)
         {
             HsCustomers = new HashSet<Customer>();
-            // Program loop
             do
             {
                 Menu();
@@ -332,20 +328,22 @@ namespace AccountManagement
 
     public class Customer
     {
+        #region private embedded classes
         private class SavingsAccount
         {
-            public SavingsAccount(double INTERESTRATE = 1.5)
+            public SavingsAccount(double interestRate = 1.5)
             {
-                InterestRate = INTERESTRATE;
+                _interestRate = interestRate;
                 AccountNumber = ++_totalAccounts;
                 _balance = 0;
             }
 
-            public double InterestRate { get; set; }
-            public uint AccountNumber { get; set; }
+            public readonly double _interestRate;
+            public double InterestRate => _interestRate;
+            public readonly uint? AccountNumber; // { get; private set; }
             private static uint _totalAccounts;
-            private double _balance;
-            public double Balance
+            private double? _balance;
+            public double? Balance
             {
                 get { return _balance; }
                 set
@@ -367,10 +365,10 @@ namespace AccountManagement
                 _balance = 0;
             }
 
-            public readonly uint AccountNumber; 
+            public readonly uint? AccountNumber; 
             private static uint _totalAccounts;
-            private double _balance;
-            public double Balance
+            private double? _balance;
+            public double? Balance
             {
                 get { return _balance; }
                 set
@@ -387,21 +385,22 @@ namespace AccountManagement
                 }
             }
         } // class CheckingAccount
-        
+        #endregion
+
         #region Customer member data
-        public string firstName { get; set; }
-        public string lastName { get; set; }
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
         public string City { get; set; }
         public string State { get; set; }
         public uint Zipcode { get; set; }
         private readonly CheckingAccount _checkingAccount;
         private readonly SavingsAccount _savingsAccount;
         
-        public double CheckingBalance => _checkingAccount.Balance; // An "expression body" prevents using "return"
-        public double SavingsBalance => _savingsAccount.Balance;
+        public double CheckingBalance => _checkingAccount?.Balance ?? 0.0;
+        public double SavingsBalance => _savingsAccount?.Balance ??  0.0;
 
-        public uint CheckingAccountNumber => _checkingAccount.AccountNumber;
-        public uint SavingsAccountNumber => _savingsAccount.AccountNumber;
+        public uint CheckingAccountNumber => _checkingAccount?.AccountNumber ?? 0;
+        public uint SavingsAccountNumber => _savingsAccount?.AccountNumber ?? 0;
         #endregion
 
         public Customer(bool checking = false, bool savings = false)
@@ -419,8 +418,8 @@ namespace AccountManagement
 
         public Customer(string[][] details, bool checking = false, bool savings = false)
         {
-            firstName = details[0][0].ToString(); 
-            lastName = details[0][1].ToString(); 
+            FirstName = details[0][0].ToString(); 
+            LastName = details[0][1].ToString(); 
             City = details[1][0].ToString();
             State = details[1][1].ToString(); 
             Zipcode = Convert.ToUInt32(details[1][2].ToString()); 
@@ -446,12 +445,12 @@ namespace AccountManagement
         {
             StringBuilder str = new StringBuilder();
             str.AppendFormat("{0} {1}\n {2}, {3}  {4}\nChecking Account #: {5}\nChecking Balance: \n${6} \nSavings Account #: {7} \nSavings Balance: ${8}", 
-                firstName, lastName, City, State, Zipcode, CheckingAccountNumber, CheckingBalance, SavingsAccountNumber, SavingsBalance);
+                FirstName, LastName, City, State, Zipcode, CheckingAccountNumber, CheckingBalance, SavingsAccountNumber, SavingsBalance);
             return str.ToString();
         }
     } // Class Customer
 
-    class CustomerComparer : IEqualityComparer<Customer>
+    public class CustomerComparer : IEqualityComparer<Customer>
     {
         public bool Equals(Customer a, Customer b)
         {
