@@ -315,7 +315,7 @@ namespace AccountManagement
                 double total = 0;
                 foreach (var cust in HsCustomers)
                 {
-                    total += cust.checkingAccount.Amount + cust.savingsAccount.Amount;
+                    total += cust.CheckingBalance + cust.SavingsBalance;
                 }
                 return total;
             }
@@ -337,60 +337,75 @@ namespace AccountManagement
     } // class Program
 
 
-    class SavingsAccount
-    {
-        public SavingsAccount(double INTERESTRATE = 1.5)
-        {
-            interestRate = INTERESTRATE;
-            AccountNumber = ++totalAccounts;
-            amount = 0;
-        }
 
-        public double interestRate { get; set; }
-        public uint AccountNumber { get; private set; }
-        private static uint totalAccounts;
-        private double amount;
-        public double Amount
+
+    public class Customer
+    {
+        private class SavingsAccount
         {
-            get { return amount; }
-            set
+            public SavingsAccount(double INTERESTRATE = 1.5)
             {
-                if (value < 0)
+                interestRate = INTERESTRATE;
+                AccountNumber = ++_totalAccounts;
+                _balance = 0;
+            }
+
+            public double interestRate { get; set; }
+            public uint AccountNumber { get; set; }
+            private static uint _totalAccounts;
+            private double _balance;
+            public double Balance
+            {
+                get { return _balance; }
+                set
                 {
-                    Console.WriteLine("Insufficient funds");
-                }
-                else
-                {
-                    amount = value;
+                    if (value < 0)
+                        Console.WriteLine("Insufficient funds. Transaction Aborted");
+                    else
+                        _balance = value;
                 }
             }
-        }
-         
-    } // class SavingsAccount
 
-    class CheckingAccount
-    {
-        public CheckingAccount()
+        } // class SavingsAccount
+
+        private class CheckingAccount
         {
-            AccountNumber = ++totalAccounts;
-            //AccountNumber.Add(++totalCheckingAccounts);
-        }
+            public CheckingAccount()
+            {
+                AccountNumber = ++_totalAccounts;
+                _balance = 0;
+            }
 
-        public uint AccountNumber;
-        private static uint totalAccounts;
-        public double Amount { get; set; }
-    } // class CheckingAccount
-
-    class Customer
-    {
+            public readonly uint AccountNumber; 
+            private static uint _totalAccounts;
+            private double _balance;
+            public double Balance
+            {
+                get { return _balance; }
+                set
+                {
+                    if (value < 0)
+                        Console.WriteLine("Attempting to set Checking Balance below 0. Transaction aborted.");
+                    else
+                        _balance = value;
+                }
+            }
+        } // class CheckingAccount
+        
         #region Customer member data
         public string firstName { get; set; }
         public string lastName { get; set; }
         public string City { get; set; }
         public string State { get; set; }
         public uint Zipcode { get; set; }
-        public CheckingAccount checkingAccount;
-        public SavingsAccount savingsAccount;
+        private CheckingAccount checkingAccount;
+        private SavingsAccount savingsAccount;
+        
+        public double CheckingBalance => checkingAccount.Balance; // An "expression body" prevents using "return"
+        public double SavingsBalance => savingsAccount.Balance;
+
+        public uint CheckingAccountNumber => checkingAccount.AccountNumber;
+        public uint SavingsBalanceNumber => savingsAccount.AccountNumber;
         #endregion
 
         public Customer(bool checking = false, bool savings = false)
@@ -419,6 +434,7 @@ namespace AccountManagement
                 savingsAccount = new SavingsAccount();
         }
 
+        
         public override string ToString()
         {
             StringBuilder str = new StringBuilder();
@@ -431,7 +447,7 @@ namespace AccountManagement
     {
         public bool Equals(Customer a, Customer b)
         {
-            return a.firstName == b.firstName && a.lastName == b.lastName && a.checkingAccount == b.checkingAccount;
+            return a.CheckingAccountNumber == b.CheckingAccountNumber;
         }
 
         public int GetHashCode(Customer a)
